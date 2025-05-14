@@ -1,15 +1,12 @@
-import type { Market } from "@/components/MarketList";
+import { readData } from "../firebase/database";
 
-export const mockMarkets: Market[] = [
-	{ id: 1, name: "Capitão", distance: 0.5 },
-	{ id: 2, name: "SuperBarato", distance: 1.2 },
-	{ id: 3, name: "Taiwan", distance: 2.8 },
-];
+// Função para obter mercados
+export const getMarkets = async (): Promise<Market[]> => {
+	const marketsData = await readData("markets");
+	return marketsData ? Object.values(marketsData) : [];
+};
 
-export function getMarkets(): Market[] {
-	return mockMarkets;
-}
-
-export function getMarketById(id: number): Market | undefined {
-	return mockMarkets.find((market) => market.id === id);
-}
+// Função para obter um mercado por ID
+export const getMarketById = async (id: number): Promise<Market> => {
+	return await readData(`markets/${id}`);
+};

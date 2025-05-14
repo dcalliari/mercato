@@ -4,14 +4,17 @@ import { ItemsInput } from "@/components/ItemsInput";
 import { MarketList } from "@/components/MarketList";
 import { MarketMap } from "@/components/MarketMap";
 import { getMarkets } from "@/services/marketService";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Home() {
 	const [step, setStep] = useState<"input" | "markets" | "map">("input");
 	const [items, setItems] = useState<string[]>([]);
 	const [selectedMarket, setSelectedMarket] = useState<number | null>(null);
+	const [markets, setMarkets] = useState<Market[]>([]);
 
-	const markets = getMarkets();
+	useEffect(() => {
+		getMarkets().then((data) => setMarkets(data));
+	}, []);
 
 	const handleSubmitItems = (parsedItems: string[]) => {
 		setItems(parsedItems);
