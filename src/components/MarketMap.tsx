@@ -3,7 +3,6 @@
 import { filterRelevantCategories } from "@/lib/categoryUtils";
 import { useMarketMap } from "@/hooks/useMarketMap";
 import { motion } from "framer-motion";
-import { markets } from "@/data/markets";
 
 interface MarketMapProps {
 	items: string[];
@@ -18,6 +17,9 @@ export function MarketMap({ items, marketId }: MarketMapProps) {
 		sectionsToVisit,
 		gridMap,
 		gridDimensions,
+		isLoading,
+		categorizedItems,
+		uncategorizedItems,
 	} = useMarketMap(items, marketId);
 
 	const { width: gridWidth, height: gridHeight } = gridDimensions;
@@ -26,7 +28,17 @@ export function MarketMap({ items, marketId }: MarketMapProps) {
 		return (
 			<div className="flex flex-col items-center justify-center min-h-[200px]">
 				<div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-400 mb-4" />
-				<p className="text-gray-500">Carregando mercado...</p>
+				<p className="text-gray-500">
+					Analisando itens e carregando mercado...
+				</p>
+			</div>
+		);
+	}
+
+	if (!market) {
+		return (
+			<div className="flex flex-col items-center justify-center min-h-[200px]">
+				<p className="text-red-500">Não foi possível carregar o mercado.</p>
 			</div>
 		);
 	}
@@ -115,6 +127,9 @@ export function MarketMap({ items, marketId }: MarketMapProps) {
 						// Multiplica a posição por 2 para corresponder à grade criada em marketGrid.ts
 						const gridX = section.position.x * 2;
 						const gridY = section.position.y * 2;
+						// Check if section has items from AI categorization
+						const hasItems = categorizedItems[section.id]?.length > 0;
+
 						return (
 							<div
 								key={section.id}
@@ -127,6 +142,7 @@ export function MarketMap({ items, marketId }: MarketMapProps) {
 								className={`
                   relative p-2 rounded-lg text-center text-xs border
                   ${sectionsToVisit.some((s) => s.id === section.id) ? "bg-blue-100 border-blue-300" : ""}
+                  ${hasItems ? "ring-2 ring-blue-400" : ""}
                 `}
 							>
 								{" "}
@@ -177,18 +193,38 @@ export function MarketMap({ items, marketId }: MarketMapProps) {
 					<h3 className="font-medium text-lg mb-2">Rota recomendada:</h3>
 					{path.length > 0 ? (
 						<ol className="list-decimal pl-5">
-							{path.map((section) => (
-								<li key={section.id} className="mb-1">
-									<strong>{section.name}</strong> -
-									<span className="text-sm text-gray-600">
-										{" "}
-										{filterRelevantCategories(section, items).join(", ")}
-									</span>
-								</li>
-							))}
+							{path.map((section) => {
+								const sectionItems = categorizedItems[section.id] || [];
+								return (
+									<li key={section.id} className="mb-2">
+										<strong>{section.name}</strong>
+										{sectionItems.length > 0 ? (
+											<div className="text-sm text-gray-600 mt-1 ml-2">
+												Itens: <strong>{sectionItems.join(", ")}</strong>
+											</div>
+										) : (
+											<span className="text-sm text-gray-600">
+												{" "}
+												{filterRelevantCategories(section, items).join(", ")}
+											</span>
+										)}
+									</li>
+								);
+							})}
 						</ol>
 					) : (
-						<p className="text-gray-500">Calculating route...</p>
+						<p className="text-gray-500">Calculando rota...</p>
+					)}
+
+					{uncategorizedItems.length > 0 && (
+						<div className="mt-4 pt-2 border-t">
+							<h3 className="font-medium text-sm text-orange-600 mb-1">
+								Itens não categorizados:
+							</h3>
+							<p className="text-sm text-gray-600">
+								{uncategorizedItems.join(", ")}
+							</p>
+						</div>
 					)}
 				</div>
 			</div>

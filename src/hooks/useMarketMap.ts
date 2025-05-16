@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getMarketById } from "@/services/marketService";
+import {
+	getMarketById,
+	categorizeItemsForMarket,
+} from "@/services/marketService";
 import { createMarketGrid } from "@/lib/marketGrid";
 import { calculateRoutePoints, calculateShortestPath } from "@/lib/pathFinding";
 import { findRelevantSections } from "@/lib/sectionUtils";
@@ -17,9 +20,15 @@ export function useMarketMap(items: string[], marketId: number) {
 		null,
 	);
 	const [gridDimensions, setGridDimensions] = useState({ width: 0, height: 0 });
+	const [isLoading, setIsLoading] = useState(true);
+	const [categorizedItems, setCategorizedItems] = useState<
+		Record<string, string[]>
+	>({});
+	const [uncategorizedItems, setUncategorizedItems] = useState<string[]>([]);
 
 	useEffect(() => {
 		const fetchMarketData = async () => {
+			setIsLoading(true);
 			console.log(`MarketMap received marketId: ${marketId}`);
 
 			try {
@@ -27,12 +36,49 @@ export function useMarketMap(items: string[], marketId: number) {
 
 				if (!data) {
 					console.error(`Could not load data for market ID: ${marketId}`);
+					setIsLoading(false);
 					return;
 				}
 
 				setMarket(data);
 
-				const relevantSections = findRelevantSections(items, data.sections);
+				// Use AI categorization to analyze items
+				const { categorized, uncategorized } = await categorizeItemsForMarket(
+					items,
+					marketId,
+				);
+				setCategorizedItems(categorized);
+				setUncategorizedItems(uncategorized);
+
+				// Get relevant sections based on the categorization
+				let relevantSections: Section[] = [];
+
+				// Add sections from the AI categorization
+				for (const sectionId of Object.keys(categorized)) {
+					const section = data.sections.find((s) => s.id === sectionId);
+					if (section && !relevantSections.some((s) => s.id === section.id)) {
+						relevantSections.push(section);
+					}
+				}
+
+				// For any uncategorized items, fall back to the traditional method
+				if (uncategorized.length > 0) {
+					const traditionalSections = findRelevantSections(
+						uncategorized,
+						data.sections,
+					);
+					for (const section of traditionalSections) {
+						if (!relevantSections.some((s) => s.id === section.id)) {
+							relevantSections.push(section);
+						}
+					}
+				}
+
+				// If no sections were found, include all sections
+				if (relevantSections.length === 0) {
+					relevantSections = data.sections;
+				}
+
 				setSectionsToVisit(relevantSections);
 
 				const { grid, entrance, cashier } = createMarketGrid(data.sections);
@@ -67,8 +113,11 @@ export function useMarketMap(items: string[], marketId: number) {
 					width: maxX * 2 + 1,
 					height: maxY * 2 + 1,
 				});
+
+				setIsLoading(false);
 			} catch (error) {
 				console.error("Error when fetching market data:", error);
+				setIsLoading(false);
 			}
 		};
 
@@ -84,5 +133,8 @@ export function useMarketMap(items: string[], marketId: number) {
 		cashierPosition,
 		entrancePosition,
 		gridDimensions,
+		isLoading,
+		categorizedItems,
+		uncategorizedItems,
 	};
 }

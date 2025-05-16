@@ -8,14 +8,19 @@ export function useHomePage() {
 	const [items, setItems] = useState<string[]>([]);
 	const [selectedMarket, setSelectedMarket] = useState<number | null>(null);
 	const [markets, setMarkets] = useState<Market[]>([]);
+	const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
 	useEffect(() => {
 		getMarkets().then((data) => setMarkets(data));
 	}, []);
 
 	const handleSubmitItems = (parsedItems: string[]) => {
+		setIsProcessing(true);
 		setItems(parsedItems);
+
+		// Proceed to markets selection
 		setStep("markets");
+		setIsProcessing(false);
 	};
 
 	const handleSelectMarket = (id: number) => {
@@ -28,6 +33,7 @@ export function useHomePage() {
 		items,
 		selectedMarket,
 		markets,
+		isProcessing,
 		handleSubmitItems,
 		handleSelectMarket,
 	};
