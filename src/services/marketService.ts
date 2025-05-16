@@ -13,9 +13,7 @@ export const getMarkets = async (): Promise<Market[]> => {
 
 export const getMarketById = async (id: number): Promise<Market | null> => {
 	try {
-		console.log(`Attempting to fetch market with ID: ${id}`);
 		const market = await readData(`markets/${id - 1}`);
-		console.log(`Result for market ${id}:`, market);
 
 		if (!market) {
 			console.warn(`Mercado com ID ${id} não encontrado.`);

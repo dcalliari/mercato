@@ -12,22 +12,11 @@ export function createMarketGrid(sections: Section[]): {
 		};
 	}
 
-	console.log(
-		"Sections received:",
-		sections.map((s) => ({
-			id: s.id,
-			pos: s.position,
-		})),
-	);
-
 	const maxX = Math.max(...sections.map((s) => s.position.x)) + 1;
 	const maxY = Math.max(...sections.map((s) => s.position.y)) + 1;
 
 	const gridWidth = maxX * 2 + 1;
 	const gridHeight = maxY * 2 + 1;
-
-	console.log(`Detected dimensions: ${maxX}x${maxY}`);
-	console.log(`Grid dimensions: ${gridWidth}x${gridHeight}`);
 
 	const grid: GridNode[][] = Array(gridHeight)
 		.fill(null)
@@ -63,7 +52,6 @@ export function createMarketGrid(sections: Section[]): {
 		}
 	}
 
-	console.log(`Total sections placed on grid: ${sectionCount}`);
 	const entranceX = Math.floor(gridWidth / 2);
 	const entranceY = 0;
 

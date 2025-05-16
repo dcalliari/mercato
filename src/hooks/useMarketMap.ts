@@ -29,7 +29,6 @@ export function useMarketMap(items: string[], marketId: number) {
 	useEffect(() => {
 		const fetchMarketData = async () => {
 			setIsLoading(true);
-			console.log(`MarketMap received marketId: ${marketId}`);
 
 			try {
 				const data = await getMarketById(marketId);
