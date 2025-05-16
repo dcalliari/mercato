@@ -141,8 +141,7 @@ export function MarketMap({ items, marketId }: MarketMapProps) {
 								}}
 								className={`
                   relative p-2 rounded-lg text-center text-xs border
-                  ${sectionsToVisit.some((s) => s.id === section.id) ? "bg-blue-100 border-blue-300" : ""}
-                  ${hasItems ? "ring-2 ring-blue-400" : ""}
+                  ${hasItems ? "ring-2 ring-blue-400 bg-blue-100" : ""}
                 `}
 							>
 								{" "}
@@ -151,11 +150,6 @@ export function MarketMap({ items, marketId }: MarketMapProps) {
 									{section.categories.slice(0, 2).join(", ")}
 									{section.categories.length > 2 ? "..." : ""}
 								</div>
-								{isInPath && (
-									<div className="absolute top-1 left-1 bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-										{pathIndex + 1}
-									</div>
-								)}
 							</div>
 						);
 					})}{" "}
