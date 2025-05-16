@@ -34,7 +34,7 @@ export class LLMService {
 		}
 
 		this.genAI = new GoogleGenerativeAI(apiKey);
-		this.model = "gemini-1.5-flash-8b";
+		this.model = "gemini-2.0-flash-lite";
 	}
 
 	/**
