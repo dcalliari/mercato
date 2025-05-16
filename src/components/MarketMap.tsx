@@ -22,9 +22,7 @@ export function MarketMap({ items, marketId }: MarketMapProps) {
 
 	const { width: gridWidth, height: gridHeight } = gridDimensions;
 
-	const marketData = market || markets[0];
-
-	if (!marketData) {
+	if (isLoading) {
 		return (
 			<div className="flex flex-col items-center justify-center min-h-[200px]">
 				<div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-400 mb-4" />
@@ -41,7 +39,7 @@ export function MarketMap({ items, marketId }: MarketMapProps) {
 		>
 			{/* Título do mapa */}
 			<h2 className="text-2xl font-medium mb-4 text-center">
-				Mapa de {marketData.name}
+				Mapa de {market.name}
 			</h2>
 			<p className="text-gray-600 mb-2 text-center">
 				Produtos: <strong>{items.join(", ")}</strong>
@@ -111,7 +109,7 @@ export function MarketMap({ items, marketId }: MarketMapProps) {
 						return null;
 					})}{" "}
 					{/* Renderiza as seções */}
-					{(marketData.sections || []).map((section: Section) => {
+					{(market.sections || []).map((section: Section) => {
 						const isInPath = path.some((s) => s.id === section.id);
 						const pathIndex = path.findIndex((s) => s.id === section.id);
 						// Multiplica a posição por 2 para corresponder à grade criada em marketGrid.ts
