@@ -18,7 +18,6 @@ export function useHomePage() {
 		setIsProcessing(true);
 		setItems(parsedItems);
 
-		// Proceed to markets selection
 		setStep("markets");
 		setIsProcessing(false);
 	};

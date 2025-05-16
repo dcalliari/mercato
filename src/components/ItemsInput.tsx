@@ -22,7 +22,7 @@ export function ItemsInput({ onSubmit }: ItemsInputProps) {
 
 		setInputValue("");
 		onSubmit(parsed);
-		// Reset processing after a short delay to prevent double submissions
+
 		setTimeout(() => setIsProcessing(false), 500);
 	};
 
