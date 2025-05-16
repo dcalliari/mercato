@@ -1,8 +1,9 @@
 "use client";
 
-import { getMarketById } from "@/services/marketService";
+import { filterRelevantCategories } from "@/lib/categoryUtils";
+import { useMarketMap } from "@/hooks/useMarketMap";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { markets } from "@/data/markets";
 
 interface MarketMapProps {
 	items: string[];
@@ -10,32 +11,26 @@ interface MarketMapProps {
 }
 
 export function MarketMap({ items, marketId }: MarketMapProps) {
-	const [path, setPath] = useState<Section[]>([]);
-	const [sectionsToVisit, setSectionsToVisit] = useState<Section[]>([]);
-	const [market, setMarket] = useState<Market | null>(null);
+	const {
+		market,
+		path,
+		routePoints,
+		sectionsToVisit,
+		gridMap,
+		gridDimensions,
+	} = useMarketMap(items, marketId);
 
-	useEffect(() => {
-		getMarketById(marketId).then((data) => {
-			setMarket(data);
+	const { width: gridWidth, height: gridHeight } = gridDimensions;
 
-			if (!data?.sections) return;
+	const marketData = market || markets[0];
 
-			// Encontrar as seções que contêm os itens da lista
-			const relevantSections = findRelevantSections(items, data.sections);
-			setSectionsToVisit(relevantSections);
-
-			// Calcular o caminho mais curto para visitar todas as seções
-			const shortestPath = calculateShortestPath(
-				data.sections,
-				relevantSections,
-			);
-			setPath(shortestPath);
-		});
-	}, [items, marketId]);
-
-	// Não faz sentido continuar se não há market
-	if (!market) {
-		return <div>Mercado não encontrado</div>;
+	if (!marketData) {
+		return (
+			<div className="flex flex-col items-center justify-center min-h-[200px]">
+				<div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-400 mb-4" />
+				<p className="text-gray-500">Carregando mercado...</p>
+			</div>
+		);
 	}
 
 	return (
@@ -44,82 +39,142 @@ export function MarketMap({ items, marketId }: MarketMapProps) {
 			animate={{ opacity: 1, y: 0 }}
 			className="w-full max-w-lg"
 		>
+			{/* Título do mapa */}
 			<h2 className="text-2xl font-medium mb-4 text-center">
-				Mapa de {market.name}
+				Mapa de {marketData.name}
 			</h2>
 			<p className="text-gray-600 mb-2 text-center">
 				Produtos: <strong>{items.join(", ")}</strong>
 			</p>
-
 			{/* Grid do mercado */}
 			<div className="w-full bg-white p-4 rounded-xl border shadow-sm">
 				<div
-					className="grid gap-1 mb-4 relative"
+					className="grid gap-[2px] mb-4 relative"
 					style={{
-						gridTemplateColumns: `repeat(${Math.max(...(market.sections ?? []).map((s) => s.position.x))}, minmax(0, 1fr))`,
-						gridTemplateRows: `repeat(${Math.max(...(market.sections ?? []).map((s) => s.position.y))}, minmax(0, 1fr))`,
+						gridTemplateColumns: `repeat(${gridWidth}, minmax(0, 1fr))`,
+						gridTemplateRows: `repeat(${gridHeight}, minmax(0, 1fr))`,
+						aspectRatio:
+							gridWidth > 0 && gridHeight > 0 ? gridWidth / gridHeight : 1,
 					}}
 				>
-					{(market.sections ?? []).map((section) => {
+					{/* Renderiza o grid com corredores */}
+					{gridMap.flat().map((cell) => {
+						if (cell.isEntrance) {
+							return (
+								<div
+									key={`entrance-${cell.x}-${cell.y}`}
+									style={{
+										gridColumnStart: cell.x + 1,
+										gridRowStart: cell.y + 1,
+									}}
+									className="bg-green-200 w-full h-full rounded-md flex items-center justify-center"
+								>
+									<span className="text-[8px] font-bold">ENTRADA</span>
+								</div>
+							);
+						}
+						if (cell.isCashier) {
+							return (
+								<div
+									key={`cashier-${cell.x}-${cell.y}`}
+									style={{
+										gridColumnStart: cell.x + 1,
+										gridRowStart: cell.y + 1,
+									}}
+									className="bg-red-200 w-full h-full rounded-md flex items-center justify-center"
+								>
+									<span className="text-[8px] font-bold">CAIXA</span>
+								</div>
+							);
+						}
+						if (!cell.isSection && cell.isCorridor) {
+							// Check if this corridor is part of the path
+							const isInPath = routePoints.some(
+								(point) => point.x === cell.x && point.y === cell.y,
+							);
+
+							return (
+								<div
+									key={`corridor-${cell.x}-${cell.y}`}
+									style={{
+										gridColumnStart: cell.x + 1,
+										gridRowStart: cell.y + 1,
+									}}
+									className="bg-gray-100 w-full h-full flex items-center justify-center relative"
+								>
+									{isInPath && (
+										<div className="w-3 h-3 rounded-full bg-amber-400 border border-amber-500" />
+									)}
+								</div>
+							);
+						}
+						return null;
+					})}{" "}
+					{/* Renderiza as seções */}
+					{(marketData.sections || []).map((section: Section) => {
 						const isInPath = path.some((s) => s.id === section.id);
 						const pathIndex = path.findIndex((s) => s.id === section.id);
-						const isStart = path[0]?.id === section.id;
-						const isEnd =
-							path[path.length - 1]?.id === section.id && path.length > 1;
+						// Multiplica a posição por 2 para corresponder à grade criada em marketGrid.ts
+						const gridX = section.position.x * 2;
+						const gridY = section.position.y * 2;
 						return (
 							<div
 								key={section.id}
 								style={{
-									gridColumn: section.position.x,
-									gridRow: section.position.y,
+									gridColumnStart: gridX + 1,
+									gridRowStart: gridY + 1,
+									gridColumnEnd: gridX + 2,
+									gridRowEnd: gridY + 2,
 								}}
 								className={`
-            relative p-2 rounded-lg text-center text-xs border
-            ${isInPath ? "bg-yellow-100 border-yellow-400 ring-2 ring-yellow-400" : ""}
-            ${isStart ? "ring-2 ring-green-500" : ""}
-            ${isEnd ? "ring-2 ring-red-500" : ""}
-          `}
+                  relative p-2 rounded-lg text-center text-xs border
+                  ${sectionsToVisit.some((s) => s.id === section.id) ? "bg-blue-100 border-blue-300" : ""}
+                `}
 							>
+								{" "}
 								<div className="font-medium">{section.name}</div>
 								<div className="text-[10px] text-gray-500 mt-1">
 									{section.categories.slice(0, 2).join(", ")}
 									{section.categories.length > 2 ? "..." : ""}
 								</div>
 								{isInPath && (
-									<div className="absolute top-1 left-1 bg-yellow-400 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+									<div className="absolute top-1 left-1 bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
 										{pathIndex + 1}
 									</div>
 								)}
 							</div>
 						);
-					})}
-				</div>
-
-				{/* Legenda */}
-				<div className="flex flex-wrap gap-20 text-xs mt-4 justify-center">
+					})}{" "}
+					{/* Path route visualization removed and replaced with highlighted corridor cells */}
+				</div>{" "}
+				{/* Legend */}
+				<div className="flex flex-wrap gap-4 text-xs mt-4 justify-center">
 					<div className="flex items-center">
-						<div className="w-3 h-3 bg-blue-100 border-blue-300 border-2 rounded mr-1">
-							<span>Seções para visitar</span>
-						</div>
+						<div className="w-3 h-3 bg-blue-100 border-blue-300 border rounded mr-1" />
+						<span>Seções para visitar</span>
 					</div>
 					<div className="flex items-center">
-						<div className="w-3 h-3 bg-gray-50 border rounded mr-1">
-							<span>Outras seções</span>
-						</div>
+						<div className="w-3 h-3 bg-amber-200 border border-amber-400 rounded mr-1" />
+						<span>Caminho</span>
 					</div>
 					<div className="flex items-center">
-						<div className="w-3 h-3 bg-gray-50 ring-2 ring-green-500 rounded mr-1">
-							<span>Início</span>
-						</div>
+						<div className="w-3 h-3 bg-gray-50 border rounded mr-1" />
+						<span>Outras seções</span>
 					</div>
 					<div className="flex items-center">
-						<div className="w-3 h-3 bg-gray-50 ring-2 ring-red-500 rounded mr-1">
-							<span>Fim</span>
-						</div>
+						<div className="w-3 h-3 bg-gray-100 rounded mr-1" />
+						<span>Corredores</span>
 					</div>
-				</div>
-
-				{/* Informações do caminho */}
+					<div className="flex items-center">
+						<div className="w-3 h-3 bg-green-200 rounded mr-1" />
+						<span>Entrada</span>
+					</div>
+					<div className="flex items-center">
+						<div className="w-3 h-3 bg-red-200 rounded mr-1" />
+						<span>Caixa</span>
+					</div>
+				</div>{" "}
+				{/* Path information */}
 				<div className="mt-6 pt-4 border-t">
 					<h3 className="font-medium text-lg mb-2">Rota recomendada:</h3>
 					{path.length > 0 ? (
@@ -135,103 +190,10 @@ export function MarketMap({ items, marketId }: MarketMapProps) {
 							))}
 						</ol>
 					) : (
-						<p className="text-gray-500">Calculando rota...</p>
+						<p className="text-gray-500">Calculating route...</p>
 					)}
 				</div>
 			</div>
 		</motion.div>
-	);
-}
-
-// Função para encontrar seções relevantes baseadas nos itens da lista
-function findRelevantSections(items: string[], sections: Section[]): Section[] {
-	const relevantSections: Section[] = [];
-
-	for (const item of items) {
-		for (const section of sections) {
-			// Verifica se alguma categoria contém o item
-			if (
-				section.categories.some(
-					(cat) =>
-						cat.toLowerCase().includes(item.toLowerCase()) ||
-						item.toLowerCase().includes(cat.toLowerCase()),
-				)
-			) {
-				if (!relevantSections.includes(section)) {
-					relevantSections.push(section);
-				}
-				break;
-			}
-		}
-	}
-
-	return relevantSections;
-}
-
-// Função para calcular o caminho mais curto usando algoritmo de Dijkstra simplificado
-function calculateShortestPath(
-	allSections: Section[],
-	sectionsToVisit: Section[],
-): Section[] {
-	if (sectionsToVisit.length === 0) return [];
-	if (sectionsToVisit.length === 1) return [...sectionsToVisit];
-
-	// Começar da entrada do mercado (consideramos A1)
-	const startSection = allSections.find((s) => s.id === "A1") || allSections[0];
-
-	// Algoritmo simplificado de caminho mais curto
-	const path: Section[] = [startSection];
-	let currentSection = startSection;
-	const remainingSections = [...sectionsToVisit].filter(
-		(s) => s.id !== startSection.id,
-	);
-
-	// Enquanto houver seções para visitar
-	while (remainingSections.length > 0) {
-		// Encontrar a próxima seção mais próxima
-		let nextSection: Section | null = null;
-		let shortestDistance = Number.POSITIVE_INFINITY;
-
-		for (const section of remainingSections) {
-			const distance = getDistance(currentSection.position, section.position);
-			if (distance < shortestDistance) {
-				shortestDistance = distance;
-				nextSection = section;
-			}
-		}
-
-		if (nextSection) {
-			path.push(nextSection);
-			currentSection = nextSection;
-
-			// Remover a seção visitada da lista de pendentes
-			const index = remainingSections.findIndex(
-				(s) => s.id === nextSection?.id,
-			);
-			if (index !== -1) {
-				remainingSections.splice(index, 1);
-			}
-		}
-	}
-
-	return path;
-}
-
-// Função para calcular a distância euclidiana entre duas posições
-function getDistance(
-	pos1: { x: number; y: number },
-	pos2: { x: number; y: number },
-): number {
-	return Math.sqrt((pos2.x - pos1.x) ** 2 + (pos2.y - pos1.y) ** 2);
-}
-
-// Função para filtrar categorias relevantes para os itens da lista
-function filterRelevantCategories(section: Section, items: string[]): string[] {
-	return section.categories.filter((category) =>
-		items.some(
-			(item) =>
-				category.toLowerCase().includes(item.toLowerCase()) ||
-				item.toLowerCase().includes(category.toLowerCase()),
-		),
 	);
 }

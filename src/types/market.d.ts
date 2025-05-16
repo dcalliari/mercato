@@ -15,5 +15,15 @@ interface Market {
 	id: number;
 	name: string;
 	distance: number;
-	sections?: Section[];
+	sections: Section[];
+}
+
+interface GridNode {
+	x: number;
+	y: number;
+	isCorridor: boolean;
+	isSection: boolean;
+	isEntrance?: boolean;
+	isCashier?: boolean;
+	sectionId?: string;
 }

@@ -1,10 +1,6 @@
-import { motion } from "framer-motion";
+"use client";
 
-export interface Market {
-	id: number;
-	name: string;
-	distance: number;
-}
+import { motion } from "framer-motion";
 
 interface MarketListProps {
 	markets: Market[];
@@ -12,6 +8,7 @@ interface MarketListProps {
 }
 
 export function MarketList({ markets, onSelect }: MarketListProps) {
+	const validMarkets = Array.isArray(markets) ? markets : [];
 	return (
 		<motion.div
 			initial={{ opacity: 0, y: 30 }}
@@ -20,9 +17,9 @@ export function MarketList({ markets, onSelect }: MarketListProps) {
 		>
 			<h2 className="text-2xl font-medium mb-4 text-center">
 				Escolha um mercado
-			</h2>
+			</h2>{" "}
 			<div className="grid gap-4">
-				{markets
+				{validMarkets
 					.sort((a, b) => a.distance - b.distance)
 					.map((market) => (
 						<motion.div
